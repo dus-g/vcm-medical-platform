@@ -123,7 +123,7 @@ export const PublicHeader: React.FC = () => {
     setSelectedCurrency(currency.code);
   };
 
-  const handleMobileNavigation = (path: string) => {
+  const handleMobileNavigation = () => {
     setIsMenuOpen(false);
     setMobileTherapiesOpen(false);
   };
@@ -438,7 +438,7 @@ export const PublicHeader: React.FC = () => {
               {/* Mobile Nav Items */}
               <Link
                 to="/"
-                onClick={() => handleMobileNavigation('/')}
+                onClick={() => handleMobileNavigation()}
                 className="block px-4 py-3 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Home
@@ -458,7 +458,7 @@ export const PublicHeader: React.FC = () => {
                   <div className="ml-4 mt-2 space-y-2 border-l-2 border-blue-200 pl-4">
                     <Link
                       to="/therapies"
-                      onClick={() => handleMobileNavigation('/therapies')}
+                      onClick={() => handleMobileNavigation()}
                       className="block px-4 py-2 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                     >
                       All Therapies
@@ -473,7 +473,7 @@ export const PublicHeader: React.FC = () => {
                           <Link
                             key={itemIndex}
                             to={item.path}
-                            onClick={() => handleMobileNavigation(item.path)}
+                            onClick={() => handleMobileNavigation()}
                             className="block px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors"
                           >
                             {item.name}
@@ -490,7 +490,7 @@ export const PublicHeader: React.FC = () => {
                 <Link
                   key={item}
                   to={`/${item.toLowerCase()}`}
-                  onClick={() => handleMobileNavigation(`/${item.toLowerCase()}`)}
+                  onClick={() => handleMobileNavigation()}
                   className="block px-4 py-3 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   {item}

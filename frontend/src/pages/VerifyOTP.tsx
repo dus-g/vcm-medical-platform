@@ -29,7 +29,7 @@ const VerifyOTP: React.FC = () => {
         otp: data.otp
       })
       
-      const { token, user } = response.data
+      const { user } = response.data
       login(user)
       toast.success('Account verified successfully!')
       navigate('/dashboard')

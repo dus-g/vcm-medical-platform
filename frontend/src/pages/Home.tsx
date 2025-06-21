@@ -13,7 +13,6 @@ import {
   Target,
   Activity,
   Heart,
-  Brain,
   Eye,
   Microscope,
   ShoppingCart
