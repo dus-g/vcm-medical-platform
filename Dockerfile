@@ -9,7 +9,12 @@ RUN go build -o main .
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
+
+# Copy the binary
 COPY --from=builder /app/main .
-COPY frontend/ ./frontend/
+
+# Copy frontend build files
+COPY --from=builder /app/frontend/dist ./frontend/dist
+
 EXPOSE 8080
 CMD ["./main"]
