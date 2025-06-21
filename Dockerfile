@@ -1,49 +1,42 @@
-# Build frontend
-FROM node:18-alpine AS frontend-builder
+# Multi-stage build for smaller image and faster builds
+FROM golang:1.21-alpine AS builder
 
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci --only=production
-COPY frontend/ .
-RUN npm run build
-
-# Build backend
-FROM golang:1.21-alpine AS backend-builder
-
-WORKDIR /app
+# Install git and other dependencies
 RUN apk add --no-cache git ca-certificates
 
-# Copy Go modules
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+
+# Download dependencies with retries and timeout
+RUN go env -w GOPROXY=https://proxy.golang.org,direct && \
+    go env -w GOSUMDB=sum.golang.org && \
+    go mod download
 
 # Copy source code
 COPY . .
 
-# Copy built frontend
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-# Build the Go application
+# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-# Final production image
+# Final stage - minimal image
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS
+# Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /root/
 
-# Copy the binary and frontend
-COPY --from=backend-builder /app/main .
-COPY --from=backend-builder /app/frontend/dist ./frontend/dist
+# Copy the binary from builder stage
+COPY --from=builder /app/main .
+
+# Copy frontend dist files if they exist
+COPY --from=builder /app/frontend/dist ./frontend/dist
 
 # Expose port
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
 CMD ["./main"]

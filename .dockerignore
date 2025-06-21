@@ -1,0 +1,32 @@
+# Git files
+.git
+.gitignore
+README.md
+*.md
+
+# Development files
+.env*
+.vscode/
+.idea/
+*.log
+
+# Frontend development files (keep dist/)
+frontend/node_modules/
+frontend/src/
+frontend/public/
+frontend/package*.json
+frontend/yarn.lock
+frontend/tsconfig.json
+frontend/vite.config.ts
+frontend/tailwind.config.js
+frontend/postcss.config.js
+
+# Go build artifacts
+*.test
+*.out
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+tmp/
