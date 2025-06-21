@@ -1,39 +1,46 @@
-# Dependencies
-node_modules/
-vendor/
-
-# Build outputs
-dist/
-build/
+# Binaries for programs and plugins
 *.exe
-main
-backend/main
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Environment
-.env
-.env.local
-.env.production
+# Test binary, built with `go test -c`
+*.test
 
-# Logs
-*.log
-logs/
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
-# OS
-.DS_Store
-Thumbs.db
-.DS_Store?
-._*
+# Go workspace file
+go.work
 
-# IDE
+# IDE files
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Database
-*.db
-*.sqlite
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Temporary
-tmp/
-temp/
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Node modules
+node_modules/
+
+# Build outputs (but keep frontend/dist for embedding)
+vcm-backend
+vcm-complete
+test-main
+
+# Don't ignore frontend/dist - we need it for embedding
+# frontend/dist/
