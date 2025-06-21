@@ -57,7 +57,7 @@ func main() {
 	}))
 
 	// Serve static files from frontend build
-	publicPath := filepath.Join("..", "frontend", "dist")
+	publicPath := filepath.Join("frontend", "dist")
 	if _, err := os.Stat(publicPath); err == nil {
 		app.Static("/", publicPath)
 		// SPA fallback

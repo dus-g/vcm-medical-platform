@@ -1,14 +1,9 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd backend && go build -o main cmd/main.go",
-    "watchPatterns": ["backend/**"]
+    "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd backend && ./main",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 100,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "startCommand": "go run cmd/main.go",
+    "healthcheckPath": "/health"
   }
 }
