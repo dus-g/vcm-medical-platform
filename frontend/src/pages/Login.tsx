@@ -26,7 +26,7 @@ const Login: React.FC = () => {
       const response = await api.post('/auth/login', data)
       const { token, user } = response.data
       
-      login(user, token)
+      login(user)
       toast.success('Login successful!')
       navigate('/dashboard')
     } catch (error: any) {

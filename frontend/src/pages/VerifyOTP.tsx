@@ -30,7 +30,7 @@ const VerifyOTP: React.FC = () => {
       })
       
       const { token, user } = response.data
-      login(user, token)
+      login(user)
       toast.success('Account verified successfully!')
       navigate('/dashboard')
     } catch (error: any) {

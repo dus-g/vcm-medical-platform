@@ -176,10 +176,10 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <h1 className="text-2xl font-bold">
-                  Welcome back, {user?.first_name} {user?.last_name}!
+                  Welcome back, {user?.name.split(" ")[0]} {user?.name.split(" ")[1] || ""}!
                 </h1>
                 <p className="text-primary-100 mt-1">
-                  {getUserTypeLabel(user?.user_type || 0)} • {user?.email}
+                  {getUserTypeLabel(user?.userType || 0)} • {user?.email}
                 </p>
                 <p className="text-primary-200 text-sm mt-1">
                   Continue your treatment journey with our advanced medical protocols

@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🔧 Fixing TypeScript errors and updating components..."
+
+# Fix Home.tsx button component
+cat > frontend/src/pages/Home.tsx << 'HOMEFILE'
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -321,3 +327,6 @@ export const Home: React.FC = () => {
 };
 
 export default Home;
+HOMEFILE
+
+echo "✅ Updated Home.tsx"

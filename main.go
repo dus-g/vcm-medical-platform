@@ -1,125 +1,133 @@
 package main
 
 import (
-	"log"
-	"os"
+        "log"
+        "os"
+        "path/filepath"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+        "github.com/gofiber/fiber/v2"
+        "github.com/gofiber/fiber/v2/middleware/cors"
+        "github.com/gofiber/fiber/v2/middleware/logger"
+        "github.com/gofiber/fiber/v2/middleware/filesystem"
 )
 
 func main() {
-	app := fiber.New()
+        app := fiber.New()
 
-	app.Use(logger.New())
-	app.Use(cors.New())
+        app.Use(logger.New())
+        app.Use(cors.New())
 
-	// Health check
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status":    "ok",
-			"message":   "VCM Medical Platform API",
-			"version":   "1.0.0",
-		})
-	})
+        // Health check
+        app.Get("/health", func(c *fiber.Ctx) error {
+                return c.JSON(fiber.Map{
+                        "status":    "ok",
+                        "message":   "VCM Medical Platform API",
+                        "version":   "1.0.0",
+                })
+        })
 
-	// API routes
-	api := app.Group("/api/v1")
-	
-	api.Get("/info", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"name":        "VCM Medical Platform",
-			"description": "Advanced Medical Treatment Platform with 95% Efficacy",
-			"status":      "running",
-			"features": []string{
-				"Multi-user authentication",
-				"Medical assessment forms", 
-				"Appointment booking",
-				"Real-time chat support",
-				"Order management",
-			},
-		})
-	})
+        // API routes
+        api := app.Group("/api/v1")
+        
+        api.Get("/info", func(c *fiber.Ctx) error {
+                return c.JSON(fiber.Map{
+                        "name":        "VCM Medical Platform",
+                        "description": "Advanced Medical Treatment Platform with 95% Efficacy",
+                        "status":      "running",
+                        "features": []string{
+                                "Multi-user authentication",
+                                "Medical assessment forms", 
+                                "Appointment booking",
+                                "Photo progress tracking",
+                                "Treatment protocols",
+                                "Doctor consultations",
+                        },
+                })
+        })
 
-	// Serve a simple HTML page
-	app.Get("/", func(c *fiber.Ctx) error {
-		html := `<!DOCTYPE html>
+        // Serve static files from frontend/dist
+        distPath := filepath.Join("frontend", "dist")
+        if _, err := os.Stat(distPath); err == nil {
+                log.Printf("Serving frontend from: %s", distPath)
+                app.Use("/", filesystem.New(filesystem.Config{
+                        Root: distPath,
+                        Browse: false,
+                        Index: "index.html",
+                }))
+                
+                // Handle SPA routing - serve index.html for all routes not matched above
+                app.Use("*", func(c *fiber.Ctx) error {
+                        return c.SendFile(filepath.Join(distPath, "index.html"))
+                })
+        } else {
+                log.Printf("Frontend dist folder not found at %s, serving basic HTML", distPath)
+                
+                // Fallback HTML if frontend dist is not available
+                app.Get("*", func(c *fiber.Ctx) error {
+                        return c.Type("html").SendString(`
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VCM Medical Platform</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .container { max-width: 800px; margin: 0 auto; text-align: center; }
-        .header { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; margin-bottom: 30px; }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .feature { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; }
-        .btn { display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 10px; }
-        .btn:hover { background: #45a049; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 600px; }
+        .logo { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 24px; font-weight: bold; }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .feature { background: #f8f9fa; padding: 20px; border-radius: 15px; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px 30px; border: none; border-radius: 25px; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; margin: 10px; transition: transform 0.3s; }
+        .btn:hover { transform: translateY(-2px); }
+        .status { background: #e7f5e7; color: #2d5a2d; padding: 10px 20px; border-radius: 20px; display: inline-block; margin: 20px 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🏥 VCM Medical Platform</h1>
-            <p>Advanced Medical Treatment Platform with 95% Efficacy</p>
-            <p><strong>✅ Successfully Deployed on Railway!</strong></p>
-        </div>
+        <div class="logo">VCM</div>
+        <h1>VCM Medical Platform</h1>
+        <p class="subtitle">Advanced Medical Treatment Platform</p>
+        <div class="status">✅ API Running Successfully</div>
         
         <div class="features">
             <div class="feature">
-                <h3>🔐 Multi-User Authentication</h3>
-                <p>8 user types supported with JWT security</p>
+                <h3>🏥 Medical Excellence</h3>
+                <p>95% treatment efficacy with breakthrough therapies</p>
             </div>
             <div class="feature">
-                <h3>📋 Medical Assessments</h3>
-                <p>Comprehensive forms for psoriasis and eye diseases</p>
+                <h3>🔬 World's First</h3>
+                <p>Clinical trials for antibiotic-resistant infections</p>
             </div>
             <div class="feature">
-                <h3>📅 Appointment System</h3>
-                <p>Schedule consultations with specialized doctors</p>
+                <h3>🌍 Global Access</h3>
+                <p>24/7 platform with Shanghai headquarters</p>
             </div>
             <div class="feature">
-                <h3>💬 Real-time Chat</h3>
-                <p>5 chat room types with support team</p>
+                <h3>⚡ Advanced Tech</h3>
+                <p>Life-cell based therapies and assessment systems</p>
             </div>
         </div>
         
-        <div style="margin-top: 40px;">
-            <a href="/health" class="btn">🔍 API Health Check</a>
-            <a href="/api/v1/info" class="btn">📊 Platform Info</a>
-        </div>
+        <a href="/api/v1/info" class="btn">View API Info</a>
+        <a href="/health" class="btn">Health Check</a>
         
-        <div style="margin-top: 40px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px;">
-            <h3>🚀 Platform Status</h3>
-            <p>✅ Go Backend Running</p>
-            <p>✅ API Endpoints Active</p>
-            <p>✅ Railway Deployment Successful</p>
-            <p>✅ Ready for Database Integration</p>
-        </div>
-        
-        <footer style="margin-top: 40px; opacity: 0.8;">
-            <p>© 2024 VAMOS BIOTECH (Shanghai) Co., Ltd.</p>
-        </footer>
+        <p style="margin-top: 30px; color: #888; font-size: 14px;">
+            VAMOS BIOTECH (Shanghai) Co., Ltd.<br>
+            Bio-pharmaceutical innovation platform
+        </p>
     </div>
 </body>
-</html>`
-		c.Type("html")
-		return c.SendString(html)
-	})
+</html>`)
+                })
+        }
 
-	// Catch all other routes
-	app.Get("/*", func(c *fiber.Ctx) error {
-		return c.Redirect("/")
-	})
+        port := os.Getenv("PORT")
+        if port == "" {
+                port = "8080"
+        }
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("🚀 VCM Medical Platform starting on port %s", port)
-	log.Fatal(app.Listen(":" + port))
+        log.Printf("Server starting on port %s", port)
+        log.Fatal(app.Listen(":" + port))
 }
