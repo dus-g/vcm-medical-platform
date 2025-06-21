@@ -34,7 +34,7 @@ const Register: React.FC = () => {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true)
     try {
-      const response = await api.post('/auth/register', {
+      await api.post('/auth/register', {
         ...data,
         user_type: parseInt(data.user_type.toString())
       })

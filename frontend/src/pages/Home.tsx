@@ -3,23 +3,13 @@ import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { 
-  CheckCircle, 
   Users, 
   FileText, 
   Calendar, 
-  Stethoscope, 
-  ArrowRight,
   Zap,
-  Shield,
   Globe,
   Award,
-  Target,
-  Activity,
-  Heart,
-  Brain,
-  Eye,
   Microscope,
-  ShoppingCart
 } from 'lucide-react'
 
 const Home: React.FC = () => {

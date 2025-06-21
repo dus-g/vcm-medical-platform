@@ -13,7 +13,6 @@ import {
   FileText,
   MessageSquare,
   TrendingUp,
-  Clock,
   CheckCircle,
   Settings,
   Bell
@@ -216,7 +215,7 @@ const Dashboard: React.FC = () => {
               {quickActions.map((action) => {
                 const Icon = action.icon
                 return (
-                  <Card key={action.name} className="hover:shadow-md transition-shadow cursor-pointer" onClick={action.action}>
+                  <Card key={action.name} className="hover:shadow-md transition-shadow cursor-pointer" >
                     <div className="text-center">
                       <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${action.color} text-white mb-4`}>
                         <Icon className="h-6 w-6" />
