@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import VerifyOTP from './pages/VerifyOTP';
+import Test from './pages/Test';
+import Test from './pages/Test';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
             <Route path="/shop" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Shop</h1><p>Coming soon...</p></div>} />
             <Route path="/research" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Research</h1><p>Coming soon...</p></div>} />
             <Route path="/contact" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Contact Us</h1><p>Coming soon...</p></div>} />
+            <Route path="/test" element={<Test />} />
+            <Route path="/test" element={<Test />} />
           </Routes>
         </main>
         <PublicFooter />

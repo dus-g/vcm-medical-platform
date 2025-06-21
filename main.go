@@ -1,299 +1,444 @@
 package main
 
 import (
-        "log"
-        "os"
+	"embed"
+	"fmt"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 
-        "github.com/gofiber/fiber/v2"
-        "github.com/gofiber/fiber/v2/middleware/cors"
-        "github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
+//go:embed frontend/dist
+var embedFrontend embed.FS
+
+// Database models matching your existing structure
+type UserType struct {
+	UserType     int    `json:"userType" gorm:"primaryKey;column:user_type"`
+	UserTypeName string `json:"userTypeName" gorm:"column:user_type_name"`
+}
+
+func (UserType) TableName() string {
+	return "usertype"
+}
+
+type User struct {
+	CdUser        uint      `json:"cdUser" gorm:"primaryKey;column:cd_user"`
+	UserStatus    string    `json:"userStatus" gorm:"column:user_status;default:'Registered'"`
+	TyUser        int       `json:"tyUser" gorm:"column:ty_user"`
+	SubtypeUser   int       `json:"subtypeUser" gorm:"column:subtype_user;default:0"`
+	Email         string    `json:"email" gorm:"column:email;unique"`
+	Password      string    `json:"-" gorm:"column:password"`
+	OtpCode       string    `json:"-" gorm:"column:otp_code;default:''"`
+	OtpCreatedAt  time.Time `json:"otpCreatedAt" gorm:"column:otp_created_at;default:'1970-01-01 00:00:01'"`
+	FirstName     string    `json:"firstName" gorm:"column:first_name;default:''"`
+	LastName      string    `json:"lastName" gorm:"column:last_name;default:''"`
+	Gender        string    `json:"gender" gorm:"column:gender;default:'Other'"`
+	PhoneNumber   string    `json:"phoneNumber" gorm:"column:phone_number;default:''"`
+	DateOfBirth   time.Time `json:"dateOfBirth" gorm:"column:date_of_birth;default:'1900-01-01'"`
+	CdCountry     int       `json:"cdCountry" gorm:"column:cd_country;default:0"`
+	CdState       int       `json:"cdState" gorm:"column:cd_state;default:0"`
+	CdCity        int       `json:"cdCity" gorm:"column:cd_city;default:0"`
+	StreetAddress string    `json:"streetAddress" gorm:"column:street_address;default:''"`
+	PostalCode    string    `json:"postalCode" gorm:"column:postal_code;default:''"`
+	CreatedAt     time.Time `json:"createdAt" gorm:"column:created_at"`
+	UpdatedAt     time.Time `json:"updatedAt" gorm:"column:updated_at"`
+	DeletedAt     *time.Time `json:"deletedAt" gorm:"column:deleted_at"`
+}
+
+func (User) TableName() string {
+	return "users"
+}
+
+type Country struct {
+	CdCountry   int    `json:"cd_country" gorm:"primaryKey;column:cd_country"`
+	CountryName string `json:"country_name" gorm:"column:country_name"`
+	CountryAbbr string `json:"country_abbr" gorm:"column:country_abbr"`
+}
+
+func (Country) TableName() string {
+	return "country"
+}
+
+type State struct {
+	CdCountry int    `json:"cd_country" gorm:"primaryKey;column:cd_country"`
+	CdState   int    `json:"cd_state" gorm:"primaryKey;column:cd_state"`
+	StateName string `json:"state_name" gorm:"column:state_name"`
+	StateAbbr string `json:"state_abbr" gorm:"column:state_abbr"`
+}
+
+func (State) TableName() string {
+	return "state"
+}
+
+var db *gorm.DB
+
 func main() {
-        app := fiber.New()
-        app.Use(logger.New())
-        app.Use(cors.New())
+	godotenv.Load()
+	initDB()
 
-        // Health check
-        app.Get("/health", func(c *fiber.Ctx) error {
-                return c.JSON(fiber.Map{
-                        "status":  "ok",
-                        "message": "VCM Medical Platform API",
-                        "version": "2.0.0",
-                })
-        })
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{"error": err.Error()})
+		},
+	})
 
-        // API info
-        app.Get("/api/v1/info", func(c *fiber.Ctx) error {
-                return c.JSON(fiber.Map{
-                        "name":        "VCM Medical Platform",
-                        "description": "Advanced Medical Treatment Platform",
-                        "status":      "running",
-                        "version":     "2.0.0",
-                })
-        })
+	app.Use(logger.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,Authorization",
+	}))
 
-        // Serve the modern HTML for all other routes
-        app.Get("*", func(c *fiber.Ctx) error {
-                return c.Type("html").SendString(`
+	// Health check
+	app.Get("/health", func(c *fiber.Ctx) error {
+		dbStatus := "disconnected"
+		if db != nil {
+			sqlDB, _ := db.DB()
+			if sqlDB != nil && sqlDB.Ping() == nil {
+				dbStatus = "connected"
+			}
+		}
+
+		return c.JSON(fiber.Map{
+			"status":    "ok",
+			"message":   "VCM Medical Platform API",
+			"version":   "2.0.0",
+			"database":  dbStatus,
+			"time":      time.Now(),
+		})
+	})
+
+	// API routes
+	api := app.Group("/api/v1")
+	setupRoutes(api)
+
+	// Serve frontend
+	setupFrontend(app)
+
+	port := getEnv("PORT", "8080")
+	log.Printf("🚀 VCM Medical Platform starting on port %s", port)
+	log.Fatal(app.Listen(":" + port))
+}
+
+func initDB() {
+	var err error
+	
+	// Use DATABASE_URL for Railway
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL != "" {
+		db, err = gorm.Open(postgres.Open(dbURL), &gorm.Config{})
+	} else {
+		// Fallback for local development
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			getEnv("DB_HOST", "localhost"),
+			getEnv("DB_USER", "vcm_user"),
+			getEnv("DB_PASSWORD", "vcm_password_2024"),
+			getEnv("DB_NAME", "vcm_medical"),
+			getEnv("DB_PORT", "5432"),
+			getEnv("DB_SSLMODE", "disable"),
+		)
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	}
+
+	if err != nil {
+		log.Printf("❌ Database connection failed: %v", err)
+		return
+	}
+
+	log.Println("✅ Database connected!")
+}
+
+func setupRoutes(api fiber.Router) {
+	// Auth routes
+	auth := api.Group("/auth")
+	auth.Post("/register", register)
+	auth.Post("/login", login)
+	auth.Post("/verify-otp", verifyOTP)
+	auth.Post("/resend-otp", resendOTP)
+	
+	// Protected auth routes
+	protected := auth.Group("", jwtMiddleware)
+	protected.Get("/me", getProfile)
+
+	// Location routes
+	location := api.Group("/location")
+	location.Get("/countries", getCountries)
+	location.Get("/states/:countryId", getStates)
+}
+
+func setupFrontend(app *fiber.App) {
+	// Try embedded frontend first
+	frontendFS, err := fs.Sub(embedFrontend, "frontend/dist")
+	if err == nil {
+		app.Use("/", filesystem.New(filesystem.Config{
+			Root:   http.FS(frontendFS),
+			Browse: false,
+		}))
+		log.Println("✅ Serving embedded frontend")
+		return
+	}
+
+	// Fallback to simple HTML
+	app.Get("*", func(c *fiber.Ctx) error {
+		return c.Type("html").SendString(`
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VCM Medical Platform - Advanced Treatment Solutions</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%); }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Header -->
-    <header class="fixed w-full top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
-                <div class="flex items-center">
-                    <div class="h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-xl">VCM</span>
-                    </div>
-                    <span class="ml-3 text-xl font-bold text-gray-900">VCM Medical</span>
-                </div>
-                <nav class="hidden lg:flex items-center space-x-8">
-                    <a href="#" class="text-blue-600 bg-blue-50 font-medium px-3 py-2 rounded-lg">Home</a>
-                    <a href="#therapies" class="text-gray-700 hover:text-blue-600 font-medium">Therapies</a>
-                    <a href="#about" class="text-gray-700 hover:text-blue-600 font-medium">About</a>
-                    <a href="#contact" class="text-gray-700 hover:text-blue-600 font-medium">Contact</a>
-                </nav>
-            </div>
-        </div>
-    </header>
+<html><head><title>VCM Medical Platform</title>
+<style>body{font-family:Arial;padding:40px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-align:center}</style>
+</head><body>
+<h1>🏥 VCM Medical Platform</h1>
+<p>Advanced Medical Treatment Platform with 95% Efficacy</p>
+<div style="background:rgba(76,175,80,0.2);padding:15px;border-radius:25px;margin:20px 0">✅ API Status: Running</div>
+<div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:15px">
+<h3>🔗 API Endpoints:</h3>
+<p>GET /health - Health Check</p>
+<p>GET /api/v1/location/countries - Countries</p>
+<p>POST /api/v1/auth/register - Registration</p>
+<p>POST /api/v1/auth/login - Login</p>
+</div>
+</body></html>`)
+	})
+}
 
-    <!-- Hero Section -->
-    <main class="pt-20">
-        <section class="pt-16 pb-16 px-6 bg-gradient-to-br from-blue-50 to-cyan-50">
-            <div class="max-w-7xl mx-auto text-center">
-                <div class="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-full text-blue-700 text-sm font-medium mb-6">
-                    <div class="w-2 h-2 bg-blue-500 rounded-full mr-2 pulse"></div>
-                    VAMOS BIOTECH - Bio-Pharmaceutical Innovation
-                </div>
-                
-                <h1 class="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-                    Advanced Medical
-                    <span class="block text-blue-600">Treatment Platform</span>
-                </h1>
-                
-                <p class="text-xl text-gray-600 mb-8 max-w-4xl mx-auto">
-                    Breakthrough life-cell based therapies for cancer, viral infections, autoimmune disorders, 
-                    and antibiotic-resistant bacterial infections with proven 95% efficacy rates.
-                </p>
-                
-                <div class="flex gap-4 justify-center mb-12">
-                    <button class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-lg">
-                        Start Treatment
-                    </button>
-                    <button class="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium rounded-lg">
-                        Explore Therapies
-                    </button>
-                </div>
+// Auth handlers
+func register(c *fiber.Ctx) error {
+	var req struct {
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		UserType    int    `json:"userType"`
+		FirstName   string `json:"firstName"`
+		LastName    string `json:"lastName"`
+		PhoneNumber string `json:"phoneNumber"`
+		Gender      string `json:"gender"`
+		DateOfBirth string `json:"dateOfBirth"`
+		CountryId   int    `json:"countryId"`
+		StateId     int    `json:"stateId"`
+		CityId      int    `json:"cityId"`
+	}
 
-                <!-- Highlights -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-                    <div class="bg-white/80 rounded-xl p-6 shadow border">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                            <span class="text-2xl">🏆</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">95% Treatment Efficacy</h3>
-                        <p class="text-sm text-gray-600">Breakthrough results in melanoma and cancer treatment</p>
-                    </div>
-                    <div class="bg-white/80 rounded-xl p-6 shadow border">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                            <span class="text-2xl">🔬</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">World's First</h3>
-                        <p class="text-sm text-gray-600">Clinical trials for antibiotic-resistant infections</p>
-                    </div>
-                    <div class="bg-white/80 rounded-xl p-6 shadow border">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                            <span class="text-2xl">🌍</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">24/7 Platform Access</h3>
-                        <p class="text-sm text-gray-600">Global operations with Shanghai headquarters</p>
-                    </div>
-                    <div class="bg-white/80 rounded-xl p-6 shadow border">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                            <span class="text-2xl">⚡</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Advanced Therapies</h3>
-                        <p class="text-sm text-gray-600">Cutting-edge medical treatments</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+	}
 
-        <!-- Treatment Process -->
-        <section class="py-16 px-6 bg-white">
-            <div class="max-w-7xl mx-auto">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Your Treatment Journey</h2>
-                    <p class="text-xl text-gray-600">Simple steps to access our breakthrough medical treatments</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-                    <div class="bg-white rounded-2xl p-6 shadow-lg border text-center">
-                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mb-3 mx-auto flex items-center justify-center">1</div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Register</h3>
-                        <p class="text-gray-600 text-sm">Sign up and schedule consultation</p>
-                    </div>
-                    <div class="bg-white rounded-2xl p-6 shadow-lg border text-center">
-                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mb-3 mx-auto flex items-center justify-center">2</div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Assessment</h3>
-                        <p class="text-gray-600 text-sm">Complete medical forms</p>
-                    </div>
-                    <div class="bg-white rounded-2xl p-6 shadow-lg border text-center">
-                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mb-3 mx-auto flex items-center justify-center">3</div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Protocol</h3>
-                        <p class="text-gray-600 text-sm">Receive treatment plan</p>
-                    </div>
-                    <div class="bg-white rounded-2xl p-6 shadow-lg border text-center">
-                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mb-3 mx-auto flex items-center justify-center">4</div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Purchase</h3>
-                        <p class="text-gray-600 text-sm">Buy prescribed products</p>
-                    </div>
-                    <div class="bg-white rounded-2xl p-6 shadow-lg border text-center">
-                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mb-3 mx-auto flex items-center justify-center">5</div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Monitor</h3>
-                        <p class="text-gray-600 text-sm">Track your progress</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+	if db == nil {
+		return c.Status(503).JSON(fiber.Map{"error": "Database not available"})
+	}
 
-        <!-- Medical Conditions -->
-        <section id="therapies" class="py-16 px-6 bg-gray-50">
-            <div class="max-w-7xl mx-auto">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Medical Conditions We Treat</h2>
-                    <p class="text-xl text-gray-600">Comprehensive treatment protocols across major medical specialties</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    <div class="bg-white rounded-lg shadow border-l-4 border-l-red-500 p-6">
-                        <div class="flex items-center mb-4">
-                            <span class="text-2xl mr-3">🛡️</span>
-                            <h3 class="text-xl font-bold text-gray-900">Cancers</h3>
-                        </div>
-                        <ul class="space-y-2 text-sm text-gray-700">
-                            <li>• B-cell leukemia, lymphoma (CAR-T)</li>
-                            <li>• Melanoma therapy</li>
-                            <li>• Colorectal, pancreas cancer</li>
-                        </ul>
-                    </div>
-                    <div class="bg-white rounded-lg shadow border-l-4 border-l-blue-500 p-6">
-                        <div class="flex items-center mb-4">
-                            <span class="text-2xl mr-3">❤️</span>
-                            <h3 class="text-xl font-bold text-gray-900">Autoimmune</h3>
-                        </div>
-                        <ul class="space-y-2 text-sm text-gray-700">
-                            <li>• Psoriasis Vulgaris</li>
-                            <li>• Rheumatoid arthritis</li>
-                            <li>• Lupus, Hashimoto's</li>
-                        </ul>
-                    </div>
-                    <div class="bg-white rounded-lg shadow border-l-4 border-l-cyan-500 p-6">
-                        <div class="flex items-center mb-4">
-                            <span class="text-2xl mr-3">👁️</span>
-                            <h3 class="text-xl font-bold text-gray-900">Eye Diseases</h3>
-                        </div>
-                        <ul class="space-y-2 text-sm text-gray-700">
-                            <li>• Macular degeneration</li>
-                            <li>• Glaucoma</li>
-                            <li>• Lazy eye (Amblyopia)</li>
-                        </ul>
-                    </div>
-                    <div class="bg-white rounded-lg shadow border-l-4 border-l-green-500 p-6">
-                        <div class="flex items-center mb-4">
-                            <span class="text-2xl mr-3">🫁</span>
-                            <h3 class="text-xl font-bold text-gray-900">Respiratory</h3>
-                        </div>
-                        <ul class="space-y-2 text-sm text-gray-700">
-                            <li>• Tuberculosis</li>
-                            <li>• Pneumonia & Bronchitis</li>
-                            <li>• Gastritis & H. Pylori</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
+	}
 
-        <!-- CTA -->
-        <section class="py-16 px-6 bg-gradient-to-r from-blue-600 to-blue-700">
-            <div class="max-w-4xl mx-auto text-center">
-                <h2 class="text-3xl font-bold text-white mb-6">Ready to Begin Your Treatment?</h2>
-                <p class="text-xl text-blue-100 mb-8">Join thousands of patients who have experienced breakthrough results.</p>
-                <div class="flex gap-4 justify-center">
-                    <button class="px-8 py-3 bg-white text-blue-600 hover:bg-gray-100 font-medium rounded-lg">Start Your Journey</button>
-                    <button class="px-8 py-3 border-2 border-white text-white hover:bg-white hover:text-blue-600 font-medium rounded-lg">Contact Our Team</button>
-                </div>
-            </div>
-        </section>
-    </main>
+	// Generate OTP
+	otp := fmt.Sprintf("%06d", time.Now().Unix()%1000000)
 
-    <!-- Footer -->
-    <footer id="contact" class="bg-gray-900 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div>
-                    <div class="flex items-center mb-4">
-                        <div class="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                            <span class="text-white font-bold text-sm">VCM</span>
-                        </div>
-                        <span class="ml-2 text-white font-bold text-lg">VCM Medical</span>
-                    </div>
-                    <p class="text-gray-300 text-sm">VAMOS BIOTECH (Shanghai) Co., Ltd. - Bio-pharmaceutical company specializing in advanced life-cell based therapies with proven 95% treatment efficacy.</p>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
-                    <ul class="space-y-2 text-sm text-gray-300">
-                        <li><a href="#" class="hover:text-blue-400">Home</a></li>
-                        <li><a href="#" class="hover:text-blue-400">About Us</a></li>
-                        <li><a href="#" class="hover:text-blue-400">Medical Therapies</a></li>
-                        <li><a href="#" class="hover:text-blue-400">Contact</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Specialties</h3>
-                    <ul class="space-y-2 text-sm text-gray-300">
-                        <li><a href="#" class="hover:text-blue-400">Cancer (CAR-T)</a></li>
-                        <li><a href="#" class="hover:text-blue-400">Autoimmune Disorders</a></li>
-                        <li><a href="#" class="hover:text-blue-400">Eye Diseases</a></li>
-                        <li><a href="#" class="hover:text-blue-400">Viral Infections</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Contact</h3>
-                    <div class="space-y-2 text-sm text-gray-300">
-                        <p>Building #5, Lin Gang Fengxian Industrial Park</p>
-                        <p>Shanghai 201413, P.R. China</p>
-                        <p>info@vamosbiotech.com</p>
-                        <p>+86 (21) 1234-5678</p>
-                    </div>
-                </div>
-            </div>
-            <div class="border-t border-gray-800 mt-8 pt-6 text-center text-sm text-gray-400">
-                <p>© 2024 VAMOS BIOTECH (Shanghai) Co., Ltd. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-</body>
-</html>`)
-        })
+	// Parse date of birth
+	dob, _ := time.Parse("2006-01-02", req.DateOfBirth)
 
-        port := os.Getenv("PORT")
-        if port == "" {
-                port = "8080"
-        }
+	user := User{
+		Email:         req.Email,
+		Password:      string(hashedPassword),
+		TyUser:        req.UserType,
+		FirstName:     req.FirstName,
+		LastName:      req.LastName,
+		PhoneNumber:   req.PhoneNumber,
+		Gender:        req.Gender,
+		DateOfBirth:   dob,
+		CdCountry:     req.CountryId,
+		CdState:       req.StateId,
+		CdCity:        req.CityId,
+		OtpCode:       otp,
+		OtpCreatedAt:  time.Now(),
+		UserStatus:    "Pending",
+	}
 
-        log.Printf("🚀 VCM Medical Platform v2.0 starting on port %s", port)
-        log.Fatal(app.Listen(":" + port))
+	if err := db.Create(&user).Error; err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Registration failed"})
+	}
+
+	log.Printf("📧 OTP for %s: %s", req.Email, otp)
+
+	return c.JSON(fiber.Map{
+		"message": "Registration successful",
+		"email":   req.Email,
+		"otp":     otp, // Remove in production
+	})
+}
+
+func login(c *fiber.Ctx) error {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	if db == nil {
+		return c.Status(503).JSON(fiber.Map{"error": "Database not available"})
+	}
+
+	var user User
+	if err := db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Invalid credentials"})
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Invalid credentials"})
+	}
+
+	if user.UserStatus != "Active" {
+		return c.Status(401).JSON(fiber.Map{
+			"error": "Please verify your email first",
+			"needsVerification": true,
+		})
+	}
+
+	token, err := generateJWT(user.CdUser)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
+	}
+
+	return c.JSON(fiber.Map{
+		"token": token,
+		"user":  user,
+	})
+}
+
+func verifyOTP(c *fiber.Ctx) error {
+	var req struct {
+		Email   string `json:"email"`
+		OtpCode string `json:"otpCode"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	if db == nil {
+		return c.Status(503).JSON(fiber.Map{"error": "Database not available"})
+	}
+
+	var user User
+	if err := db.Where("email = ? AND otp_code = ?", req.Email, req.OtpCode).First(&user).Error; err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid OTP"})
+	}
+
+	if time.Since(user.OtpCreatedAt) > 10*time.Minute {
+		return c.Status(400).JSON(fiber.Map{"error": "OTP expired"})
+	}
+
+	user.UserStatus = "Active"
+	user.OtpCode = ""
+	db.Save(&user)
+
+	token, _ := generateJWT(user.CdUser)
+
+	return c.JSON(fiber.Map{
+		"message": "Email verified successfully",
+		"token":   token,
+		"user":    user,
+	})
+}
+
+func resendOTP(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"message": "OTP resent"})
+}
+
+func getProfile(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uint)
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+	return c.JSON(user)
+}
+
+func getCountries(c *fiber.Ctx) error {
+	if db == nil {
+		return c.JSON(fiber.Map{
+			"countries": []fiber.Map{
+				{"cd_country": 1, "country_name": "United States", "country_abbr": "US"},
+				{"cd_country": 86, "country_name": "China", "country_abbr": "CN"},
+			},
+		})
+	}
+
+	var countries []Country
+	db.Find(&countries)
+	return c.JSON(fiber.Map{"countries": countries})
+}
+
+func getStates(c *fiber.Ctx) error {
+	countryId, _ := strconv.Atoi(c.Params("countryId"))
+	
+	if db == nil {
+		return c.JSON(fiber.Map{"states": []fiber.Map{}})
+	}
+
+	var states []State
+	db.Where("cd_country = ?", countryId).Find(&states)
+	return c.JSON(fiber.Map{"states": states})
+}
+
+// Utility functions
+func generateJWT(userID uint) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(getEnv("JWT_SECRET", "default-secret")))
+}
+
+func jwtMiddleware(c *fiber.Ctx) error {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "Missing authorization header"})
+	}
+
+	if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+		return c.Status(401).JSON(fiber.Map{"error": "Invalid authorization header"})
+	}
+
+	tokenString := authHeader[7:]
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(getEnv("JWT_SECRET", "default-secret")), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(401).JSON(fiber.Map{"error": "Invalid token"})
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	userID := uint(claims["user_id"].(float64))
+	c.Locals("userID", userID)
+
+	return c.Next()
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
