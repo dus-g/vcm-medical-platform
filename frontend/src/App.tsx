@@ -1,21 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, FormEvent, CSSProperties } from 'react';
+
+// Define types for better TypeScript support
+interface User {
+  email: string;
+  name: string;
+}
+
+interface UserData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string;
+  dateOfBirth: string;
+  gender: string;
+  occupation: string;
+  medicalCondition: string;
+  emergencyContact: string;
+  emergencyPhone: string;
+}
 
 // Simple routing without react-router-dom to avoid dependency issues
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState<string>('home');
+  const [user, setUser] = useState<User | null>(null);
 
-  const navigate = (page) => {
+  const navigate = (page: string) => {
     setCurrentPage(page);
   };
 
-  const mockLogin = (email, password) => {
+  const mockLogin = (email: string, password: string) => {
     // Mock login
     setUser({ email, name: 'John Doe' });
     navigate('dashboard');
   };
 
-  const mockRegister = (userData) => {
+  const mockRegister = (userData: UserData) => {
     // Mock registration
     navigate('verify-otp');
   };
@@ -25,449 +45,348 @@ function App() {
     navigate('complete-profile');
   };
 
-  const mockCompleteProfile = () => {
-    navigate('dashboard');
-  };
-
-  const logout = () => {
-    setUser(null);
-    navigate('home');
-  };
-
-  // Common styles
-  const styles = {
+  // Define styles with proper TypeScript types
+  const styles: { [key: string]: CSSProperties } = {
     container: {
-      minHeight: '100vh',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      lineHeight: '1.6',
+      margin: 0,
+      padding: 0,
+      backgroundColor: '#f8f9fa'
     },
     header: {
-      background: 'white',
-      padding: '1rem 0',
-      borderBottom: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    },
-    headerContent: {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '0 1rem',
+      backgroundColor: '#2c3e50',
+      color: 'white',
+      padding: '1rem 2rem',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     },
     logo: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-    },
-    logoIcon: {
-      width: '40px',
-      height: '40px',
-      background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-      borderRadius: '8px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'white',
+      fontSize: '1.8rem',
       fontWeight: 'bold',
-      fontSize: '20px',
+      margin: 0
     },
     nav: {
       display: 'flex',
-      gap: '2rem',
+      gap: '2rem'
     },
-    navLink: {
-      color: '#374151',
-      textDecoration: 'none',
-      fontWeight: '500',
-      cursor: 'pointer',
-      padding: '0.5rem 0',
-    },
-    button: {
-      background: '#3b82f6',
-      color: 'white',
+    navButton: {
+      background: 'none',
       border: 'none',
-      padding: '0.75rem 1.5rem',
-      borderRadius: '8px',
-      fontWeight: '600',
+      color: 'white',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '1rem',
+      padding: '0.5rem 1rem',
+      borderRadius: '4px',
+      transition: 'background-color 0.3s'
     },
-    buttonSecondary: {
-      background: 'white',
-      color: '#374151',
-      border: '1px solid #d1d5db',
-      padding: '0.75rem 1.5rem',
-      borderRadius: '8px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      fontSize: '14px',
+    main: {
+      padding: '2rem',
+      maxWidth: '1200px',
+      margin: '0 auto'
     },
     hero: {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white',
-      padding: '5rem 0',
-      textAlign: 'center',
+      padding: '4rem 2rem',
+      textAlign: 'center' as const,
+      borderRadius: '12px',
+      marginBottom: '3rem'
     },
-    heroContent: {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '0 1rem',
+    heroTitle: {
+      fontSize: '3rem',
+      marginBottom: '1rem',
+      fontWeight: 'bold'
     },
-    section: {
-      padding: '4rem 0',
-    },
-    sectionContent: {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '0 1rem',
+    heroSubtitle: {
+      fontSize: '1.3rem',
+      marginBottom: '2rem',
+      opacity: 0.9
     },
     card: {
-      background: 'white',
-      borderRadius: '12px',
+      backgroundColor: 'white',
+      borderRadius: '8px',
       padding: '2rem',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-      border: '1px solid #e5e7eb',
+      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+      marginBottom: '2rem'
     },
-    formContainer: {
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem',
+    cardTitle: {
+      fontSize: '1.8rem',
+      marginBottom: '1rem',
+      color: '#2c3e50'
     },
     form: {
-      background: 'white',
-      borderRadius: '16px',
-      padding: '2rem',
-      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-      width: '100%',
-      maxWidth: '400px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem'
     },
     input: {
       width: '100%',
       padding: '0.75rem',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '16px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      fontSize: '1rem',
       marginBottom: '1rem',
-      boxSizing: 'border-box',
+      boxSizing: 'border-box' as const
+    },
+    button: {
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '4px',
+      fontSize: '1rem',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s',
+      marginTop: '1rem'
+    },
+    buttonSecondary: {
+      backgroundColor: '#95a5a6',
+      color: 'white',
+      border: 'none',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '4px',
+      fontSize: '1rem',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s',
+      marginTop: '0.5rem'
     },
     grid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
       gap: '2rem',
-      marginTop: '2rem',
+      marginTop: '2rem'
     },
+    footer: {
+      backgroundColor: '#2c3e50',
+      color: 'white',
+      textAlign: 'center' as const,
+      padding: '2rem',
+      marginTop: '3rem'
+    }
   };
 
-  // Header Component
-  const Header = () => (
-    <header style={styles.header}>
-      <div style={styles.headerContent}>
-        <div style={styles.logo}>
-          <div style={styles.logoIcon}>V</div>
-          <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>
-            VCM Medical
-          </span>
-        </div>
-        <nav style={styles.nav}>
-          <span style={styles.navLink} onClick={() => navigate('home')}>Home</span>
-          <span style={styles.navLink} onClick={() => navigate('about')}>About</span>
-          <span style={styles.navLink} onClick={() => navigate('contact')}>Contact</span>
-        </nav>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {user ? (
-            <>
-              <span>Welcome, {user.name}!</span>
-              <button style={styles.button} onClick={() => navigate('dashboard')}>
-                Dashboard
-              </button>
-              <button style={styles.buttonSecondary} onClick={logout}>
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <button style={styles.buttonSecondary} onClick={() => navigate('login')}>
-                Sign In
-              </button>
-              <button style={styles.button} onClick={() => navigate('register')}>
-                Get Started
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </header>
-  );
-
-  // Home Page
+  // Home Page Component
   const HomePage = () => (
     <div style={styles.container}>
-      <Header />
-      
-      {/* Hero Section */}
       <section style={styles.hero}>
-        <div style={styles.heroContent}>
-          <h1 style={{ fontSize: '3.5rem', fontWeight: 'bold', marginBottom: '1.5rem', margin: 0 }}>
-            Advanced Medical Treatments
-          </h1>
-          <p style={{ fontSize: '1.25rem', marginBottom: '2rem', opacity: 0.9 }}>
-            VCM Medical Platform connects patients with specialized doctors for cutting-edge treatments
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button 
-              style={{ ...styles.button, background: 'white', color: '#667eea', fontSize: '18px', padding: '1rem 2rem' }}
-              onClick={() => navigate('register')}
-            >
-              Start Assessment
-            </button>
-            <button 
-              style={{ ...styles.button, background: 'transparent', border: '2px solid white', fontSize: '18px', padding: '1rem 2rem' }}
-              onClick={() => navigate('about')}
-            >
-              Learn More
-            </button>
-          </div>
-        </div>
+        <h1 style={styles.heroTitle}>VCM Medical Platform</h1>
+        <p style={styles.heroSubtitle}>
+          Advanced medical treatments with cutting-edge immunotherapy protocols. 
+          Connect with our medical experts. Support available 24/7.
+        </p>
+        <button 
+          style={styles.button}
+          onClick={() => navigate('register')}
+        >
+          Get Started Today
+        </button>
       </section>
 
-      {/* Specialties */}
-      <section style={{ ...styles.section, background: '#f9fafb' }}>
-        <div style={styles.sectionContent}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', textAlign: 'center', marginBottom: '3rem' }}>
-            Our Medical Specialties
-          </h2>
-          <div style={styles.grid}>
-            {[
-              { icon: '🔬', title: 'Cancer Immunotherapy', desc: 'CAR-T Cell Therapy and advanced treatments' },
-              { icon: '🛡️', title: 'Autoimmune Disorders', desc: 'Precision therapy for complex conditions' },
-              { icon: '👁️', title: 'Ophthalmology', desc: 'Advanced eye disease treatments' },
-              { icon: '🧠', title: 'Neurology', desc: 'Stroke rehabilitation and brain health' },
-              { icon: '🫁', title: 'Respiratory', desc: 'Lung disease management' },
-              { icon: '🦠', title: 'Infectious Diseases', desc: 'Advanced infection treatments' },
-            ].map((specialty, index) => (
-              <div key={index} style={styles.card}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{specialty.icon}</div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  {specialty.title}
-                </h3>
-                <p style={{ color: '#6b7280' }}>{specialty.desc}</p>
-              </div>
-            ))}
-          </div>
+      <div style={styles.grid}>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>🧬 Cancer Immunotherapy</h3>
+          <p>CAR-T Cell Therapy, BiTE Antibodies, and Neoantigen-TIL therapy for various cancer types.</p>
         </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{ ...styles.section, background: '#111827', color: 'white' }}>
-        <div style={{ ...styles.sectionContent, textAlign: 'center' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Ready to Start Your Treatment Journey?
-          </h2>
-          <p style={{ fontSize: '1.25rem', marginBottom: '2rem', opacity: 0.8 }}>
-            Join thousands of patients who have found effective treatments
-          </p>
-          <button 
-            style={{ ...styles.button, fontSize: '18px', padding: '1rem 2rem' }}
-            onClick={() => navigate('register')}
-          >
-            Get Started Today
-          </button>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>🔬 Autoimmune Disorders</h3>
+          <p>Precision therapy for Psoriasis, Rheumatoid Arthritis, Lupus, and Hashimoto's Thyroiditis.</p>
         </div>
-      </section>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>👁️ Ophthalmology</h3>
+          <p>Advanced treatments for Optic Nerve Atrophy, Glaucoma, Macular Degeneration, and more.</p>
+        </div>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>🧠 Neurological Sciences</h3>
+          <p>Stroke rehabilitation, Alzheimer's treatment, Autism interventions, and migraine therapy.</p>
+        </div>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>🫁 Respiratory Medicine</h3>
+          <p>Tuberculosis precision treatment, Pneumonia immunotherapy, and chronic bronchitis management.</p>
+        </div>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>🦠 Infectious Diseases</h3>
+          <p>HPV immunotherapy, broad-spectrum antivirals, and antibiotic-resistant infection treatment.</p>
+        </div>
+      </div>
     </div>
   );
 
-  // Login Page
+  // Login Page Component
   const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: FormEvent) => {
       e.preventDefault();
       mockLogin(email, password);
     };
 
     return (
-      <div style={styles.formContainer}>
-        <div style={styles.form}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ ...styles.logoIcon, margin: '0 auto 1rem' }}>V</div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Welcome back</h2>
-            <p style={{ color: '#6b7280' }}>Sign in to your VCM Medical account</p>
-          </div>
-          
-          <form onSubmit={handleSubmit}>
+      <div style={styles.main}>
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Welcome Back</h2>
+          <form style={styles.form} onSubmit={handleSubmit}>
             <input
-              style={styles.input}
               type="email"
-              placeholder="Email address"
+              placeholder="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              style={styles.input}
               required
             />
             <input
-              style={styles.input}
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              style={styles.input}
               required
             />
-            <button type="submit" style={{ ...styles.button, width: '100%', marginBottom: '1rem' }}>
+            <button type="submit" style={styles.button}>
               Sign In
             </button>
+            <button 
+              type="button" 
+              style={styles.buttonSecondary}
+              onClick={() => navigate('register')}
+            >
+              Create New Account
+            </button>
           </form>
-          
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ color: '#6b7280' }}>Don't have an account? </span>
-            <span style={{ color: '#3b82f6', cursor: 'pointer' }} onClick={() => navigate('register')}>
-              Sign up
-            </span>
-          </div>
         </div>
       </div>
     );
   };
 
-  // Register Page
-  const RegisterPage = () => {
-    const [formData, setFormData] = useState({
+  // Registration Page Component
+  const RegistrationPage = () => {
+    const [formData, setFormData] = useState<UserData>({
       firstName: '',
       lastName: '',
       email: '',
       password: '',
-      confirmPassword: '',
-      userType: '0'
+      phone: '',
+      dateOfBirth: '',
+      gender: '',
+      occupation: '',
+      medicalCondition: '',
+      emergencyContact: '',
+      emergencyPhone: ''
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: FormEvent) => {
       e.preventDefault();
-      if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
-        return;
-      }
       mockRegister(formData);
     };
 
+    const handleInputChange = (field: keyof UserData, value: string) => {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+
     return (
-      <div style={styles.formContainer}>
-        <div style={styles.form}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ ...styles.logoIcon, margin: '0 auto 1rem' }}>V</div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Create account</h2>
-            <p style={{ color: '#6b7280' }}>Join VCM Medical Platform today</p>
-          </div>
-          
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="First name"
-                value={formData.firstName}
-                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                required
-              />
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="Last name"
-                value={formData.lastName}
-                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                required
-              />
-            </div>
+      <div style={styles.main}>
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Create Your Account</h2>
+          <form style={styles.form} onSubmit={handleSubmit}>
             <input
+              type="text"
+              placeholder="First Name"
+              value={formData.firstName}
+              onChange={(e) => handleInputChange('firstName', e.target.value)}
               style={styles.input}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={formData.lastName}
+              onChange={(e) => handleInputChange('lastName', e.target.value)}
+              style={styles.input}
+              required
+            />
+            <input
               type="email"
-              placeholder="Email address"
+              placeholder="Email Address"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              style={styles.input}
               required
             />
             <select
+              value={formData.gender}
+              onChange={(e) => handleInputChange('gender', e.target.value)}
               style={styles.input}
-              value={formData.userType}
-              onChange={(e) => setFormData({...formData, userType: e.target.value})}
+              required
             >
-              <option value="0">Patient</option>
-              <option value="5">Doctor</option>
-              <option value="1">Agent</option>
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
             </select>
             <input
+              type="tel"
+              placeholder="Phone Number"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
               style={styles.input}
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
               required
             />
             <input
+              type="date"
+              placeholder="Date of Birth"
+              value={formData.dateOfBirth}
+              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
               style={styles.input}
-              type="password"
-              placeholder="Confirm password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
               required
             />
-            <button type="submit" style={{ ...styles.button, width: '100%', marginBottom: '1rem' }}>
+            <button type="submit" style={styles.button}>
               Create Account
             </button>
           </form>
-          
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ color: '#6b7280' }}>Already have an account? </span>
-            <span style={{ color: '#3b82f6', cursor: 'pointer' }} onClick={() => navigate('login')}>
-              Sign in
-            </span>
-          </div>
         </div>
       </div>
     );
   };
 
-  // Verify OTP Page
-  const VerifyOTPPage = () => {
+  // OTP Verification Page
+  const OTPVerificationPage = () => {
     const [otp, setOtp] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: FormEvent) => {
       e.preventDefault();
       mockVerifyOTP();
     };
 
     return (
-      <div style={styles.formContainer}>
-        <div style={styles.form}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ ...styles.logoIcon, margin: '0 auto 1rem' }}>✉️</div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Verify your email</h2>
-            <p style={{ color: '#6b7280' }}>We've sent a verification code to your email</p>
-          </div>
-          
-          <form onSubmit={handleSubmit}>
+      <div style={styles.main}>
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Verify Your Account</h2>
+          <p>Please enter the 6-digit verification code sent to your email.</p>
+          <form style={styles.form} onSubmit={handleSubmit}>
             <input
-              style={{ ...styles.input, textAlign: 'center', fontSize: '2rem', letterSpacing: '0.5rem' }}
               type="text"
               placeholder="000000"
-              maxLength="6"
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+              onChange={(e) => setOtp(e.target.value)}
+              style={{ 
+                ...styles.input, 
+                textAlign: 'center' as const, 
+                fontSize: '2rem', 
+                letterSpacing: '0.5rem' 
+              }}
+              maxLength={6}
               required
             />
-            <button type="submit" style={{ ...styles.button, width: '100%', marginBottom: '1rem' }}>
-              Verify Email
+            <button type="submit" style={styles.button}>
+              Verify Account
             </button>
           </form>
-          
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ color: '#6b7280' }}>Didn't receive the code? </span>
-            <span style={{ color: '#3b82f6', cursor: 'pointer' }}>
-              Resend
-            </span>
-          </div>
         </div>
       </div>
     );
@@ -476,74 +395,72 @@ function App() {
   // Complete Profile Page
   const CompleteProfilePage = () => {
     const [profileData, setProfileData] = useState({
-      phone: '',
-      dateOfBirth: '',
-      gender: '',
+      occupation: '',
+      medicalCondition: '',
       emergencyContact: '',
       emergencyPhone: ''
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: FormEvent) => {
       e.preventDefault();
-      mockCompleteProfile();
+      navigate('dashboard');
+    };
+
+    const handleInputChange = (field: string, value: string) => {
+      setProfileData(prev => ({
+        ...prev,
+        [field]: value
+      }));
     };
 
     return (
-      <div style={styles.formContainer}>
-        <div style={{ ...styles.form, maxWidth: '600px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ ...styles.logoIcon, margin: '0 auto 1rem' }}>👤</div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Complete Your Profile</h2>
-            <p style={{ color: '#6b7280' }}>Please provide additional information</p>
-          </div>
-          
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <input
-                style={styles.input}
-                type="tel"
-                placeholder="Phone number"
-                value={profileData.phone}
-                onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                required
-              />
-              <input
-                style={styles.input}
-                type="date"
-                value={profileData.dateOfBirth}
-                onChange={(e) => setProfileData({...profileData, dateOfBirth: e.target.value})}
-                required
-              />
-            </div>
-            <select
+      <div style={styles.main}>
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Complete Your Profile</h2>
+          <form style={styles.form} onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Occupation"
+              value={profileData.occupation}
+              onChange={(e) => handleInputChange('occupation', e.target.value)}
               style={styles.input}
-              value={profileData.gender}
-              onChange={(e) => setProfileData({...profileData, gender: e.target.value})}
-              required
+            />
+            <input
+              type="text"
+              placeholder="Primary Medical Condition (if any)"
+              value={profileData.medicalCondition}
+              onChange={(e) => handleInputChange('medicalCondition', e.target.value)}
+              style={styles.input}
+            />
+            <select
+              value={profileData.medicalCondition}
+              onChange={(e) => handleInputChange('medicalCondition', e.target.value)}
+              style={styles.input}
             >
-              <option value="">Select gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+              <option value="">Select Medical Specialty</option>
+              <option value="cancer">Cancer Immunotherapy</option>
+              <option value="autoimmune">Autoimmune Disorders</option>
+              <option value="ophthalmology">Ophthalmology</option>
+              <option value="neurology">Neurological Sciences</option>
+              <option value="respiratory">Respiratory Medicine</option>
+              <option value="infectious">Infectious Diseases</option>
             </select>
             <input
-              style={styles.input}
               type="text"
-              placeholder="Emergency contact name"
+              placeholder="Emergency Contact Name"
               value={profileData.emergencyContact}
-              onChange={(e) => setProfileData({...profileData, emergencyContact: e.target.value})}
-              required
+              onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+              style={styles.input}
             />
             <input
-              style={styles.input}
               type="tel"
-              placeholder="Emergency contact phone"
+              placeholder="Emergency Contact Phone"
               value={profileData.emergencyPhone}
-              onChange={(e) => setProfileData({...profileData, emergencyPhone: e.target.value})}
-              required
+              onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
+              style={styles.input}
             />
-            <button type="submit" style={{ ...styles.button, width: '100%', marginBottom: '1rem' }}>
-              Complete Profile
+            <button type="submit" style={styles.button}>
+              Complete Setup
             </button>
           </form>
         </div>
@@ -553,90 +470,115 @@ function App() {
 
   // Dashboard Page
   const DashboardPage = () => (
-    <div style={styles.container}>
-      <Header />
-      <div style={{ ...styles.section, background: '#f9fafb', minHeight: '80vh' }}>
-        <div style={styles.sectionContent}>
-          <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '2rem' }}>
-            Welcome back, {user?.name || 'User'}!
-          </h1>
-          
-          <div style={styles.grid}>
-            {[
-              { icon: '📋', title: 'Medical Assessments', desc: 'Complete your medical assessment forms' },
-              { icon: '📅', title: 'Appointments', desc: 'Schedule and manage appointments' },
-              { icon: '📈', title: 'Treatment Plans', desc: 'Track your treatment progress' },
-              { icon: '💬', title: 'Chat with Doctors', desc: 'Real-time communication' },
-              { icon: '🖼️', title: 'Medical Images', desc: 'Upload and manage medical images' },
-              { icon: '⚙️', title: 'Profile Settings', desc: 'Update your information' },
-            ].map((action, index) => (
-              <div key={index} style={{ ...styles.card, cursor: 'pointer' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{action.icon}</div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  {action.title}
-                </h3>
-                <p style={{ color: '#6b7280', marginBottom: '1rem' }}>{action.desc}</p>
-                <span style={{ color: '#3b82f6', fontWeight: '600' }}>Get Started →</span>
-              </div>
-            ))}
+    <div style={styles.main}>
+      <div style={styles.card}>
+        <h2 style={styles.cardTitle}>
+          Welcome back, {user?.name || 'User'}!
+        </h2>
+        <p>Your VCM Medical Platform dashboard is ready.</p>
+        
+        <div style={styles.grid}>
+          <div style={styles.card}>
+            <h3>📋 Medical Assessments</h3>
+            <p>Complete your comprehensive medical evaluation.</p>
+            <button style={styles.button}>Start Assessment</button>
           </div>
-
-          <div style={{ ...styles.card, marginTop: '2rem', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-              Ready to start your medical assessment?
-            </h3>
-            <p style={{ marginBottom: '1.5rem', opacity: 0.9 }}>
-              Complete your comprehensive medical evaluation to get personalized treatment recommendations.
-            </p>
-            <button style={{ ...styles.button, background: 'white', color: '#3b82f6' }}>
-              Start Assessment
-            </button>
+          <div style={styles.card}>
+            <h3>🩺 Appointments</h3>
+            <p>Schedule consultations with our medical experts.</p>
+            <button style={styles.button}>Book Appointment</button>
+          </div>
+          <div style={styles.card}>
+            <h3>💬 Chat Support</h3>
+            <p>Get instant support from our medical team.</p>
+            <button style={styles.button}>Start Chat</button>
+          </div>
+          <div style={styles.card}>
+            <h3>📊 Treatment Progress</h3>
+            <p>Track your treatment journey and outcomes.</p>
+            <button style={styles.button}>View Progress</button>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Route rendering
+  // Render the appropriate page based on current route
   const renderPage = () => {
     switch (currentPage) {
-      case 'home': return <HomePage />;
-      case 'login': return <LoginPage />;
-      case 'register': return <RegisterPage />;
-      case 'verify-otp': return <VerifyOTPPage />;
-      case 'complete-profile': return <CompleteProfilePage />;
-      case 'dashboard': return <DashboardPage />;
-      case 'about': return (
-        <div style={styles.container}>
-          <Header />
-          <div style={{ ...styles.section, textAlign: 'center' }}>
-            <div style={styles.sectionContent}>
-              <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '2rem' }}>About VCM Medical</h1>
-              <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
-                Advanced medical treatments for complex conditions. Coming soon!
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-      case 'contact': return (
-        <div style={styles.container}>
-          <Header />
-          <div style={{ ...styles.section, textAlign: 'center' }}>
-            <div style={styles.sectionContent}>
-              <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '2rem' }}>Contact Us</h1>
-              <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
-                Get in touch with our medical experts. Support available 24/7.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-      default: return <HomePage />;
+      case 'login':
+        return <LoginPage />;
+      case 'register':
+        return <RegistrationPage />;
+      case 'verify-otp':
+        return <OTPVerificationPage />;
+      case 'complete-profile':
+        return <CompleteProfilePage />;
+      case 'dashboard':
+        return <DashboardPage />;
+      default:
+        return <HomePage />;
     }
   };
 
-  return renderPage();
+  return (
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <h1 style={styles.logo}>VCM Medical</h1>
+        <nav style={styles.nav}>
+          <button 
+            style={styles.navButton}
+            onClick={() => navigate('home')}
+          >
+            Home
+          </button>
+          {user ? (
+            <>
+              <button 
+                style={styles.navButton}
+                onClick={() => navigate('dashboard')}
+              >
+                Dashboard
+              </button>
+              <button 
+                style={styles.navButton}
+                onClick={() => {
+                  setUser(null);
+                  navigate('home');
+                }}
+              >
+                Logout
+              </button>
+              <span>Welcome, {user.name}!</span>
+            </>
+          ) : (
+            <>
+              <button 
+                style={styles.navButton}
+                onClick={() => navigate('login')}
+              >
+                Login
+              </button>
+              <button 
+                style={styles.navButton}
+                onClick={() => navigate('register')}
+              >
+                Register
+              </button>
+            </>
+          )}
+        </nav>
+      </header>
+
+      <main>
+        {renderPage()}
+      </main>
+
+      <footer style={styles.footer}>
+        <p>&copy; 2025 VCM Medical Platform. Advanced medical treatments for better health outcomes.</p>
+      </footer>
+    </div>
+  );
 }
 
 export default App;
