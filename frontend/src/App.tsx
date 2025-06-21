@@ -1,40 +1,54 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './store/authStore';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import VerifyOTPPage from './pages/VerifyOTPPage';
-import CompleteProfilePage from './pages/CompleteProfilePage';
-import DashboardPage from './pages/DashboardPage';
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
-};
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-          <Route path="/verify-otp" element={<VerifyOTPPage />} />
-          <Route path="/complete-profile" element={<CompleteProfilePage />} />
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Toaster position="top-right" />
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          background: 'rgba(255,255,255,0.2)',
+          borderRadius: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 20px',
+          fontSize: '32px',
+          fontWeight: 'bold'
+        }}>
+          V
+        </div>
+        <h1 style={{ fontSize: '48px', margin: '0 0 20px' }}>
+          VCM Medical Platform
+        </h1>
+        <p style={{ fontSize: '20px', margin: '0 0 30px' }}>
+          Advanced Medical Treatments for Complex Conditions
+        </p>
+        <button style={{
+          background: 'white',
+          color: '#667eea',
+          border: 'none',
+          padding: '15px 30px',
+          fontSize: '18px',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          fontWeight: 'bold'
+        }}>
+          Coming Soon
+        </button>
+        <div style={{ marginTop: '20px', fontSize: '14px', opacity: '0.8' }}>
+          Platform Status: ✅ Online
+        </div>
       </div>
-    </Router>
+    </div>
   );
 }
 
