@@ -1,49 +1,38 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import PublicHeader from './components/layout/PublicHeader';
-import PublicFooter from './components/layout/PublicFooter';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import VerifyOTP from './pages/VerifyOTP';
-import CompleteProfile from './pages/CompleteProfile';
-import Dashboard from './pages/Dashboard';
-import Test from './pages/Test';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from './store/authStore';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VerifyOTPPage from './pages/VerifyOTPPage';
+import CompleteProfilePage from './pages/CompleteProfilePage';
+import DashboardPage from './pages/DashboardPage';
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
+};
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50">
         <Routes>
-          {/* Public routes with header/footer */}
-          <Route path="/" element={
-            <>
-              <PublicHeader />
-              <main className="flex-grow">
-                <Home />
-              </main>
-              <PublicFooter />
-            </>
-          } />
-          
-          {/* Auth routes without header/footer */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-          
-          {/* Protected routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          
-          {/* Test route */}
-          <Route path="/test" element={<Test />} />
-          
-          {/* Placeholder routes */}
-          <Route path="/about" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">About Us</h1><p>Coming soon...</p></div>} />
-          <Route path="/therapies" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Medical Therapies</h1><p>Coming soon...</p></div>} />
-          <Route path="/shop" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Shop</h1><p>Coming soon...</p></div>} />
-          <Route path="/research" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Research</h1><p>Coming soon...</p></div>} />
-          <Route path="/contact" element={<div className="pt-20 p-8"><h1 className="text-2xl font-bold">Contact Us</h1><p>Coming soon...</p></div>} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+          <Route path="/verify-otp" element={<VerifyOTPPage />} />
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Toaster position="top-right" />
       </div>
     </Router>
   );

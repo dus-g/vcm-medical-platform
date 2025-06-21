@@ -1,69 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { AuthState, User, RegisterData } from '../types';
 import api from '../utils/api';
-
-export interface User {
-  cdUser: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  userStatus: string;
-  tyUser: number; // User type: 1=Patient, 5=Doctor, etc.
-  phoneNumber?: string;
-  gender?: string;
-  dateOfBirth?: string;
-  cdCountry?: number;
-  cdState?: number;
-  cdCity?: number;
-  streetAddress?: string;
-  postalCode?: string;
-  profileComplete: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  verifyOTP: (email: string, otpCode: string) => Promise<void>;
-  completeProfile: (data: ProfileData) => Promise<void>;
-  logout: () => void;
-  clearError: () => void;
-  setUser: (user: User) => void;
-  setToken: (token: string) => void;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  userType: number;
-  phoneNumber?: string;
-  gender?: string;
-  dateOfBirth?: string;
-  countryId?: number;
-  stateId?: number;
-  cityId?: number;
-}
-
-interface ProfileData {
-  phoneNumber: string;
-  gender: string;
-  dateOfBirth: string;
-  countryId: number;
-  stateId: number;
-  cityId: number;
-  streetAddress?: string;
-  postalCode?: string;
-}
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -71,115 +9,82 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      isLoading: false,
-      error: null,
+      loading: false,
 
       login: async (email: string, password: string) => {
-        set({ isLoading: true, error: null });
+        set({ loading: true });
         try {
-          const response = await api.login({ email, password });
+          const response = await api.post('/v1/auth/login', { email, password });
+          const { user, token } = response.data;
           
-          if (response.token) {
-            localStorage.setItem('vcm-token', response.token);
-            set({
-              user: response.user,
-              token: response.token,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          }
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : 'Login failed' 
-          });
-          throw error;
+          // Add computed properties for backwards compatibility
+          const userWithComputed = {
+            ...user,
+            name: `${user.first_name} ${user.last_name}`.trim(),
+            userType: user.ty_user
+          };
+          
+          set({ user: userWithComputed, token, isAuthenticated: true, loading: false });
+          localStorage.setItem('token', token);
+        } catch (error: any) {
+          set({ loading: false });
+          throw new Error(error.response?.data?.message || 'Login failed');
         }
       },
 
       register: async (data: RegisterData) => {
-        set({ isLoading: true, error: null });
+        set({ loading: true });
         try {
-          await api.register(data);
-          set({ isLoading: false });
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : 'Registration failed' 
-          });
-          throw error;
+          const response = await api.post('/v1/auth/register', data);
+          set({ loading: false });
+          return response.data;
+        } catch (error: any) {
+          set({ loading: false });
+          throw new Error(error.response?.data?.message || 'Registration failed');
         }
       },
 
-      verifyOTP: async (email: string, otpCode: string) => {
-        set({ isLoading: true, error: null });
+      verifyOTP: async (email: string, otp: string) => {
+        set({ loading: true });
         try {
-          const response = await api.verifyOTP({ email, otpCode });
+          const response = await api.post('/v1/auth/verify-otp', { email, otp });
+          const { user, token } = response.data;
           
-          if (response.token) {
-            localStorage.setItem('vcm-token', response.token);
-            set({
-              user: response.user,
-              token: response.token,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          }
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : 'OTP verification failed' 
-          });
-          throw error;
-        }
-      },
-
-      completeProfile: async (data: ProfileData) => {
-        set({ isLoading: true, error: null });
-        try {
-          const response = await api.completeProfile(data);
-          set({
-            user: response.user,
-            isLoading: false,
-          });
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : 'Profile completion failed' 
-          });
-          throw error;
+          // Add computed properties for backwards compatibility
+          const userWithComputed = {
+            ...user,
+            name: `${user.first_name} ${user.last_name}`.trim(),
+            userType: user.ty_user
+          };
+          
+          set({ user: userWithComputed, token, isAuthenticated: true, loading: false });
+          localStorage.setItem('token', token);
+        } catch (error: any) {
+          set({ loading: false });
+          throw new Error(error.response?.data?.message || 'OTP verification failed');
         }
       },
 
       logout: () => {
-        localStorage.removeItem('vcm-token');
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: null,
-        });
-      },
-
-      clearError: () => {
-        set({ error: null });
+        set({ user: null, token: null, isAuthenticated: false });
+        localStorage.removeItem('token');
       },
 
       setUser: (user: User) => {
-        set({ user, isAuthenticated: true });
-      },
-
-      setToken: (token: string) => {
-        localStorage.setItem('vcm-token', token);
-        set({ token });
+        const userWithComputed = {
+          ...user,
+          name: `${user.first_name} ${user.last_name}`.trim(),
+          userType: user.ty_user
+        };
+        set({ user: userWithComputed });
       },
     }),
     {
-      name: 'vcm-auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
+      name: 'auth-storage',
+      partialize: (state) => ({ 
+        user: state.user, 
+        token: state.token, 
+        isAuthenticated: state.isAuthenticated 
       }),
     }
   )
