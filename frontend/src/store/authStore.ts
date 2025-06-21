@@ -8,13 +8,16 @@ export interface User {
   firstName: string;
   lastName: string;
   userStatus: string;
-  tyUser: number; // User type (1=Patient, 5=Doctor, etc.)
-  phoneNumber: string;
-  gender: string;
-  dateOfBirth: string;
-  countryId: number;
-  stateId: number;
-  cityId: number;
+  tyUser: number; // User type: 1=Patient, 5=Doctor, etc.
+  phoneNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  cdCountry?: number;
+  cdState?: number;
+  cdCity?: number;
+  streetAddress?: string;
+  postalCode?: string;
+  profileComplete: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,10 +27,15 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error: string | null;
+  
+  // Actions
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
   register: (data: RegisterData) => Promise<void>;
   verifyOTP: (email: string, otpCode: string) => Promise<void>;
+  completeProfile: (data: ProfileData) => Promise<void>;
+  logout: () => void;
+  clearError: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
 }
@@ -35,72 +43,110 @@ interface AuthState {
 interface RegisterData {
   email: string;
   password: string;
-  userType: number;
   firstName: string;
   lastName: string;
+  userType: number;
+  phoneNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  countryId?: number;
+  stateId?: number;
+  cityId?: number;
+}
+
+interface ProfileData {
   phoneNumber: string;
   gender: string;
   dateOfBirth: string;
   countryId: number;
   stateId: number;
   cityId: number;
+  streetAddress?: string;
+  postalCode?: string;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: false,
+      error: null,
 
       login: async (email: string, password: string) => {
-        set({ isLoading: true });
+        set({ isLoading: true, error: null });
         try {
           const response = await api.login({ email, password });
           
-          // Store token in localStorage and state
-          localStorage.setItem('vcm-token', response.token);
-          
-          set({
-            user: response.user,
-            token: response.token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          if (response.token) {
+            localStorage.setItem('vcm-token', response.token);
+            set({
+              user: response.user,
+              token: response.token,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          }
         } catch (error) {
-          set({ isLoading: false });
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'Login failed' 
+          });
           throw error;
         }
       },
 
       register: async (data: RegisterData) => {
-        set({ isLoading: true });
+        set({ isLoading: true, error: null });
         try {
           await api.register(data);
           set({ isLoading: false });
         } catch (error) {
-          set({ isLoading: false });
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'Registration failed' 
+          });
           throw error;
         }
       },
 
       verifyOTP: async (email: string, otpCode: string) => {
-        set({ isLoading: true });
+        set({ isLoading: true, error: null });
         try {
           const response = await api.verifyOTP({ email, otpCode });
           
-          // Store token and update user
-          localStorage.setItem('vcm-token', response.token);
-          
+          if (response.token) {
+            localStorage.setItem('vcm-token', response.token);
+            set({
+              user: response.user,
+              token: response.token,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          }
+        } catch (error) {
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'OTP verification failed' 
+          });
+          throw error;
+        }
+      },
+
+      completeProfile: async (data: ProfileData) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.completeProfile(data);
           set({
             user: response.user,
-            token: response.token,
-            isAuthenticated: true,
             isLoading: false,
           });
         } catch (error) {
-          set({ isLoading: false });
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'Profile completion failed' 
+          });
           throw error;
         }
       },
@@ -111,7 +157,12 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           token: null,
           isAuthenticated: false,
+          error: null,
         });
+      },
+
+      clearError: () => {
+        set({ error: null });
       },
 
       setUser: (user: User) => {
