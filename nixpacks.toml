@@ -1,0 +1,9 @@
+[phases.build]
+cmds = [
+    "echo 'Building VCM Medical Platform...'",
+    "cd frontend && npm ci && npm run build && cd ..",
+    "go build -o main ."
+]
+
+[start]
+cmd = "./main"
